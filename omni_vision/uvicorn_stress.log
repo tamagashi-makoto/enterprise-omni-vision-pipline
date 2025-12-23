@@ -1,0 +1,118 @@
+INFO:     Started server process [6273]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+Initializing Omni-Vision Pipeline...
+Loading ModelType.YOLO_V12...
+Loading ModelType.RF_DETR...
+Loading ModelType.DINO_X...
+Loading ModelType.SAM_3...
+INFO:     127.0.0.1:57030 - "GET /health HTTP/1.1" 200 OK
+Density normal (7 objects). Keeping ModelType.YOLO_V12.
+Density normal (5 objects). Keeping ModelType.YOLO_V12.
+Density normal (4 objects). Keeping ModelType.YOLO_V12.
+Density normal (7 objects). Keeping ModelType.YOLO_V12.
+Density normal (3 objects). Keeping ModelType.YOLO_V12.
+Density normal (3 objects). Keeping ModelType.YOLO_V12.
+Density normal (2 objects). Keeping ModelType.YOLO_V12.
+Density normal (7 objects). Keeping ModelType.YOLO_V12.
+Density normal (2 objects). Keeping ModelType.YOLO_V12.
+Density normal (1 objects). Keeping ModelType.YOLO_V12.
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Density normal (8 objects). Keeping ModelType.YOLO_V12.
+Density normal (7 objects). Keeping ModelType.YOLO_V12.
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Density normal (5 objects). Keeping ModelType.YOLO_V12.
+Density normal (7 objects). Keeping ModelType.YOLO_V12.
+Density normal (9 objects). Keeping ModelType.YOLO_V12.
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Density normal (3 objects). Keeping ModelType.YOLO_V12.
+Density normal (5 objects). Keeping ModelType.YOLO_V12.
+Density normal (9 objects). Keeping ModelType.YOLO_V12.
+Density normal (4 objects). Keeping ModelType.YOLO_V12.
+Density normal (5 objects). Keeping ModelType.YOLO_V12.
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Density normal (2 objects). Keeping ModelType.YOLO_V12.
+Density normal (1 objects). Keeping ModelType.YOLO_V12.
+Density normal (1 objects). Keeping ModelType.YOLO_V12.
+Density normal (4 objects). Keeping ModelType.YOLO_V12.
+Density normal (4 objects). Keeping ModelType.YOLO_V12.
+Density normal (5 objects). Keeping ModelType.YOLO_V12.
+Density normal (4 objects). Keeping ModelType.YOLO_V12.
+Density normal (1 objects). Keeping ModelType.YOLO_V12.
+Density normal (5 objects). Keeping ModelType.YOLO_V12.
+Density normal (2 objects). Keeping ModelType.YOLO_V12.
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Density normal (7 objects). Keeping ModelType.YOLO_V12.
+Density normal (3 objects). Keeping ModelType.YOLO_V12.
+Density normal (5 objects). Keeping ModelType.YOLO_V12.
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Density normal (2 objects). Keeping ModelType.YOLO_V12.
+Density normal (8 objects). Keeping ModelType.YOLO_V12.
+Density normal (6 objects). Keeping ModelType.YOLO_V12.
+Density normal (8 objects). Keeping ModelType.YOLO_V12.
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Density normal (3 objects). Keeping ModelType.YOLO_V12.
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Density normal (1 objects). Keeping ModelType.YOLO_V12.
+Density normal (5 objects). Keeping ModelType.YOLO_V12.
+INFO:     127.0.0.1:57030 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57036 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57039 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57040 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57041 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57042 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57047 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57048 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57051 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57052 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57053 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57054 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57057 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57062 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57065 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57066 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57069 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57070 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57072 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57073 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57074 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57077 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57078 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57081 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57084 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57085 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57087 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57090 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57091 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57093 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57097 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57099 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57100 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57103 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57105 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57106 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57107 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57110 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57111 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57114 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57117 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57118 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57120 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57122 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57125 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57126 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57128 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57131 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57130 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57133 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57097 - "POST /analyze HTTP/1.1" 400 Bad Request
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Text query received: 'CCYpnyGjSGNrguGFCLbdGWcRarDlqegdtLHdDBbCRoNatAbMnuqCFvwVDwBEBnXOaYIbhIgQyLrvTqoempazzFhvOSlzXuKcMvIgGhcPVSYtSSpNycbPoelOwEcjnDtYAdFRyRilOLLOgjtBAHjlpRQWSTmAsUexdKmYarbBrylwpmJZAjACSkOrjATGABzGoVecZoJgRtMselFwShsbsiYYhVGFowoEBchVdluyOXEfNhhjQqiRWdUljvmiosqHJAUegMFiyiIFOVtMEdcLGscFoHgugkXsnmdChKvhFKULNOHfWHALBxexuUSrZGBMQeuYecGnFJeCTYgzDOvFWkDAvslfYJDySjoBiPpfLbiwIYAfqxwsKLUOrMErGzhyfzcYZRIRaFxKHNfKubajwzOcrxXWaQgUYsOcUNVvVdNIVbJaTHnxujEZhiXphhhcqPyXqgCjfHbEUoRWAQAlrWycdtLBtrvUxofrjrBxhOBjptdvaBEnOLeAxGHxjPvWZRghkZbFDFQltrOhfTsTGcBbNamJIllFBWaLFPXaHfEqFnOCHdcbGHJhekbQuWIOfxKItWdHqmQLPHJpJqJsHohTMdecJEXdJNyBnUYPcNvZHBTINQdwfFJJwttfgkgtqioItTmWHufzcNtKfeleNinBYBhQlfChRHaIxaBppuyGovpeRAqaLLUEKftypsMURwrECbyGDzajkjLUeHeVjtofzuldBrYASzLGwVTLNGHEZipmdXSDlWgKQgIUREaWuRrqWKOhareYRcBFZigircYijsuinKlzjLCzYzjqPQvOMMhgBPudnDTrsdXJbFsxcKAHNkNEKzPXqLZpRnzOszUmmVPtkjcTCtcsVKyqzXhZPYQgPDqbepCwkrTdIGIxOvRQoWGEKJukRbpxbPgxCALHTCrXQyxfWqydpOUGsZSuSPnUruyaFZcrKydPOdpzYYGMSpcKLcrZEwVwNQUEfeJavPowuVTBYUpiMbYrbYlEnxmOkyiXXpaAeyHheRowNWChbTPYiAaLmbFfClNOcEhEcozjHPeDwfdhvOnGYOscniaEOuVMfQzeJxanrQSRbqipomnrUWFgDsbVHVILDaYdwnlLECuxFfOdcGbEaGVMxdMXHYSMmThkPzdXIgxSEBaSrPyRjhUelOhXMJjSnwydJJUNdWNhgXGBQOWRQbCdaZILHRCyetkWUamPoimAbbTJPnvEJpBxxOcijxdvyxfrKqVlpxNosolXnQFJDwCWbwFOwNPNibpWcLdxzEIgnPQAKUniQyqXjdUwkwGPCQZmQskSjZFGYlTmXEaINbqNxgkPWuRmxEKEUzzBhCpSzMWOozJgwBPPeLCopnofQOZHkcPJknpQmZWKFQmSWdDCWDZsJmoGEiaVAbpmJeQHHCtRIAHlUzbZKREHuoxKUrbgqaknuaJOUugcNFOfaVtCitGaYuNPVaddHyJNvKidnopypGREgGtOjxHWvZhkUDEofJYdQDBKimjIdPnpiDKKCEStJmgMRqwkjstgVOjJGlEqsUiDTxWLpWqgCNdDBQksbVTXImDzcQKLEwAegkpFcpRXfttwstZWTGOvubvFHonSwCiYacsDtYtAAiitMXyVlnQPCdGJkxfMoThoMwoZLKZZooYyvQJHOLIHUviqCKuFvFuXvZnXFvrmoQrrqinKvgylWUyEZxTOlYlZVegTOVAKuAfGaKIBtYyYJZzhxUdkfRyOnRYpmPnYLdsBLmnMsKDiMhbIMFdLUSjoruNAMECjwossDlwUMfzNBTDrxkKYclOvNDDgjANtwrGLVHwgjQHMWSLLWdUguctvlePkEvDFXQSFfnxPVVwlQQBOhooNRgYxOnOfmDzTeasCdAjQaAjDMSCTvYLTUNxZNWwaCMIFSbcqWtBKdIwvUgVpmNjGjDPdpWTwcgSkJugslgdXEIzdOcVOTnzOBXvFbMboQDMQOWEtmPDMqZjMkWpZpQcpRWjyUQQbABINnzwVtFqtKydJUtIBLlahThdfYOIGBzAdIcUyvPIuOBPjJRsCoTAQCCNOBKsGTghayLsClMtQEIqTLoFCCjPCLFRPJBOzSppRxKOevdfBkxTVKPlyKmBXKWZmWgczuOPOZYFzqpRlcBIzgzhyiuqhGAthfifHZzNObTWIDAIoVKXVRwjLWfQPkurVdBOwdVzIvhRHKgTYnEMrZfqmKwZRuHjNFmGEeGrvNySfyNGzEokfUwcmpIkEpsELiguYgkWsQsQccjZUOfUHADdyElYWsnODcvvloAfoSVQzqilZXcazaIqfgkfRfRiUQPkngbaPCbuBIbCzWdFDCjEXPblqTiOLsoJnYrMcyVrKwkXMAynkDvXbJETSNcMppZwylTtTMZWnsuAomuleRBEhAzpImshtWItWBRXXeyMXShkJxLLjnGXWzCETPctxDRvssCsdZqkheGGgTwDqUqunYZgoSJdghybrVsZjONTEvkpThwAcKAbiYPjgPKgrSAgNXYSNRLxoyFTsWDwYEnjnxiuLYWBkGFnQfSsioujKUUywqlksNbEiPmyTvLKShTQZSgplZvnLynsVrocvfQvPuuDvCRdeYRsHPeaMrDmAYPOmAWXuGXtgTgoXfKIoYJwXWRYyhdfbxZnQqqqNRiSnFYsTauDPjQsGmWjpInIKRfjQHHtPZkWtBztgGnzZEZenRAYytpwCaWaPJFoHChFcVYqUZUrNlzjINbhRqFnDJiVPxeWGyykqhTVrCyZQqaLIqulKOTJFWXULNdTCtWOfiscOOpmzrCBXewUZaPQqljBtMBzGUpKPeYwdMTYqKBsrdNCQuqbElEPOQHNwYTUwWVxjkEMOXQAHNZkkRdXWBbeFvxuNKEvfcHWGcnwfedMnXQvSePhEKPOhmFXaRDjwfAjQyMtQZWnBfDKIlIEgExflrMwQjyoWTUeHwezHfyWBrgIXeVkknbOrEvSfOsuGjsADwyNEgqfMNNwhNGkGPayUiVUMipimpEzqYvqhkszlTjZSgHOASlRSuqzofFcxCPlSRppeDaQzFmuCLWguBLpdamjTGSrxxRLJKbDwMmswBKOXQRdsFxoRaflhKZBmtMWffkzBMrQBLSfIBqxQWqcOLgELBCKjmlSjcfaurXCmDeprYKnGYyJMibREcRMeOQVuZqIciAGAQvEotpRppwRNSjbvtEVcAmQqfJFITyMTWQoTRfTrCaFyKrSUxwUYiNWUxOcXmuMFPElTUNfDAduecLTMvlVDbXsRkwoTVrlAIsoQtoBLqVNmJJhXCLfWpFfwEfOGppjDGOyoxmdQjsoLwxywBKydpHuymLnEjUmhwOBJgWAPAgwKenXhYvyVasmvWhlevYTVQVhxZMgetZepzujBzGrFjxdeIvzTKKhHZcvQYTTgBXpUqRJAYowYWjgNplOgmPnXMRPVFOXjRwmGbsNQkqjUFsMHUsPUTIFwiqbPEUeROMQHgydxdWgTmPDfdnEyZYedPHNHWoSNkrXaPmOPjYBvoYlyKyahrOfSdPTJXlpBbfsrUEIfPFDLIdIzbYrVcbVCoJAjjGEdOiwsxSONkgLuNpZGCgqrrKfiBMGBeIPXGgfTuwoIinnwYrZZZPOSrnvOTyMlRlkEDcHCPKgqHaDlTbUlOFCrIDkxVadtbjtyrcuUuOGdqnSNwgjkdfCUzmwIUeudmGVjDJpznsfHXvicUlUaqlSsOxrPiWWzLgDZSPbXlUPYVDKZzQzwQUyOgmgmbJVIRPwQhEvuPHLwmEPtvVcFKMuJHkjRPJyYCUefRVZJRzynAxUdPKfaLdwoskPfAuOTwtyEJhZLgYKmKugCPBQixbzZCalGZJpQrjpqfGzDCMFNfVysrUJmwugFfkTCEoBGGvsvEWbnbAzMxReGMKEyzPEgUdkKQIeoREIbcNwGrOfGkXFrXoaDruCSbDNJwsXCSSdwWYXyQpQuTXlAEYJQUJzYwSfhPcLdzzRxliHACGooFiHBelocOPmuxELUGhtsuJkxUyWRGRsneqJiRixLqGkUTOXNnwsStRXVjcLuJCNUFEkgJiQrToOxNyIBgyAsRdaAPEMaoEEyiyraGOJMbwifoHISchXjGOxbyizJcnjMSKXpWCTwSXcCQiPtmpbhHtzZkCOWPCuceCWnTmciWsgBhDbSLMuFSrlAJPHeuKcSyLyyuDCmczpbeepXwYpbPJWFyBpPvAvvAGKmopXATfrgTypODVaaNwRxDjGdifruPxubzgxzIlqsdMwuRgbBrOUIthVdZpKpyswVeYYZXBainftbpIikiNIImPXiEzIlNlJdXXrxDwTgOnAIzKNaaVhbfBRlJksVEkYPAOlCiwXyqyGcWctITHguACXUWRNVRulYiLsQpFcXpDdZwcjePzfBNtpwLcBBINTOsdiPJgeEyjUQswcLMdfIQUOYFbresVYeGiKxjeDPSFwBirLizpQGZqCQppfSqhjIlDQVgOOjoEloHYJKmlYfOAGQwrnhFMzCbLEiBAZMvCMxBPgkMVSDEVmzhgsyrIkpwgMFYbxeRWijrjNdhyKWwLenvCAaUKcbZqDLdxCJNtsQwLuTPwIdrJozEviHlJJofFIShmGcruQWYUbPWEQpyDFkMMpJOijOavIkBEFVBWOEghlBZUSNqHfkspuUoOOaJRBdHRWcPXCdgmyeCXoxEBiSHakGHTavrxGaEEDiQUSwClcPWUpKztyhHnnEzxZWBiKWQAadETGINuXdcvsgbcqTQsIrQmWvHxkJOhbrJZGiUZRAXEhNREIHeRnKdUbqjbQTfbXPKVSdlTgHMzfCWJkCpQcezJsIiaMTpdvimJZItbjFHTzdvIloQfTEgUyoLRVLDieKvIVsBJXrFXdyXxLADWtEffkGYunHXfTEAQGYntoUWuPusMvEZPxiBmXqrEyMRCnOTcETgPNoRVGPDAgMbSRoBdZLOLQNKRwmCQwqjTXUkOSQqWRAeElYIzxnFzYSsqCb'. Switching to ModelType.DINO_X.
+INFO:     127.0.0.1:57097 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [6273]

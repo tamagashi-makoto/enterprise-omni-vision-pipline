@@ -1,0 +1,19 @@
+INFO:     Started server process [961]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+Initializing Omni-Vision Pipeline...
+Loading ModelType.YOLO_V12...
+Loading ModelType.RF_DETR...
+Loading ModelType.DINO_X...
+Loading ModelType.SAM_3...
+INFO:     127.0.0.1:56399 - "GET /health HTTP/1.1" 200 OK
+Density normal (8 objects). Keeping ModelType.YOLO_V12.
+INFO:     127.0.0.1:56401 - "POST /analyze HTTP/1.1" 200 OK
+Density normal (10 objects). Keeping ModelType.YOLO_V12.
+Text query received: 'red backpack'. Switching to ModelType.DINO_X.
+INFO:     127.0.0.1:56404 - "POST /analyze HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [961]
