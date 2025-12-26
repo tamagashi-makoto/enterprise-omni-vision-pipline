@@ -1,330 +1,366 @@
+#!/usr/bin/env python3
 """
-Integrated Omni-Vision Pipeline Demo
-=====================================
+Demo script for Omni-Vision Pipeline.
 
-This demo shows the complete vision pipeline in action:
-1. YOLOv12: Fast screening detection
-2. RF-DETR: High-precision detection for complex scenes
-3. Florence-2: Text-prompted open-vocabulary detection
-4. SAM3: Segmentation based on detection results
-
-The pipeline automatically selects the best model based on scene complexity
-and generates segmentation masks for detected objects.
+Downloads a sample image and runs the pipeline to show how it works.
+Usage: python demo.py
 """
 import asyncio
 import sys
+import os
+import json
 from pathlib import Path
-import urllib.request
-import time
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
 
-from PIL import Image, ImageDraw
-import torch
+from PIL import Image
 import numpy as np
+import urllib.request
+import io
 
 
-# ============================================================
-# Configuration
-# ============================================================
-SAMPLE_IMAGES = {
-    "street": "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800",
-    "office": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800",
-}
-
-DENSITY_THRESHOLD = 15  # Switch to RF-DETR if more than this many detections
-
-
-# ============================================================
-# Helper Functions
-# ============================================================
-def download_sample_images(output_dir: Path):
-    """Download sample images for testing."""
-    output_dir.mkdir(exist_ok=True)
-    images = {}
+async def main():
+    """Run pipeline demo with a sample image."""
+    print("=" * 60)
+    print("Omni-Vision Pipeline Demo")
+    print("=" * 60)
     
-    for name, url in SAMPLE_IMAGES.items():
-        filepath = output_dir / f"{name}.jpg"
-        if not filepath.exists():
-            print(f"  Downloading {name} image...")
-            try:
-                urllib.request.urlretrieve(url, filepath)
-            except Exception as e:
-                print(f"  Failed: {e}, creating placeholder")
-                img = Image.new('RGB', (800, 600), color='gray')
-                img.save(filepath)
-        images[name] = filepath
+    # --- Step 1: Get a sample image ---
+    print("\n[1/4] Loading sample image...")
     
-    return images
-
-
-def draw_detections(image: Image.Image, detections: list, color="red"):
-    """Draw bounding boxes on image."""
-    draw = ImageDraw.Draw(image)
-    for det in detections:
-        box = det.box
-        draw.rectangle(box, outline=color, width=2)
-        label = f"{det.label}: {det.confidence:.0%}"
-        draw.text((box[0], box[1] - 15), label, fill=color)
-    return image
-
-
-# ============================================================
-# Pipeline Demo
-# ============================================================
-class OmniVisionDemo:
-    """Integrated demo of the Omni-Vision pipeline."""
+    # Use a sample image from the web (a street scene with cars/people)
+    sample_url = "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=640"
     
-    def __init__(self):
-        self.yolo = None
-        self.rf_detr = None
-        self.florence2 = None
-        self.sam3 = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+    try:
+        # Try downloading
+        print(f"    Downloading from: {sample_url[:50]}...")
+        with urllib.request.urlopen(sample_url, timeout=10) as response:
+            image_data = response.read()
+        image = Image.open(io.BytesIO(image_data)).convert("RGB")
+        print(f"    ✓ Downloaded image: {image.width}x{image.height}")
+    except Exception as e:
+        print(f"    ✗ Download failed: {e}")
+        print("    Creating synthetic test image instead...")
+        # Create a synthetic image with colored rectangles to simulate objects
+        image = Image.new('RGB', (640, 480), color=(200, 200, 200))
+        # Add some colored rectangles to simulate objects
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(image)
+        draw.rectangle([50, 100, 200, 300], fill=(255, 0, 0))    # Red "object"
+        draw.rectangle([300, 150, 500, 400], fill=(0, 0, 255))   # Blue "object"
+        draw.rectangle([450, 50, 600, 200], fill=(0, 255, 0))    # Green "object"
+        print(f"    ✓ Created synthetic image: {image.width}x{image.height}")
     
-    async def load_models(self, models_to_load=None):
-        """Load specified models (or all if not specified)."""
-        from src.model_wrappers import (
-            YOLOv12Wrapper, 
-            RFDETRWrapper, 
-            Florence2Wrapper, 
-            SAM3Wrapper
+    # Save for reference
+    demo_image_path = Path(__file__).parent / "demo_input.jpg"
+    image.save(demo_image_path)
+    print(f"    Saved to: {demo_image_path}")
+    
+    # --- Step 2: Import and initialize pipeline ---
+    print("\n[2/4] Initializing pipeline...")
+    
+    try:
+        from src.pipeline import OmniVisionPipeline
+        from src.config import Config
+        
+        pipeline = OmniVisionPipeline()
+        print("    ✓ Pipeline created")
+        
+        print("    Loading models (this may take a while on first run)...")
+        await pipeline.load_models()
+        print("    ✓ All models loaded")
+        
+    except Exception as e:
+        print(f"    ✗ Pipeline initialization failed: {e}")
+        print("\n    This may be because required dependencies are not installed.")
+        print("    Please ensure you have run: pip install -r requirements.txt")
+        return
+    
+    # --- Step 3: Run pipeline in AUTO mode ---
+    print("\n[3/4] Running pipeline (mode=auto)...")
+    print("-" * 60)
+    
+    try:
+        result = await pipeline.analyze(
+            image=image,
+            mode="auto",
+            mask_format="rle"
         )
         
-        if models_to_load is None:
-            models_to_load = ["yolo", "rfdetr", "sam3"]  # Skip florence2 by default
+        print("\n📊 AUTO MODE RESULTS:")
+        print(f"    Mode used: {result.get('mode_used')}")
+        print(f"    Processing: {result.get('meta', {}).get('processing_mode')}")
+        print(f"    Objects detected: {result.get('meta', {}).get('objects_detected')}")
+        print(f"    Masks generated: {result.get('masks_generated')}")
+        print(f"    Mask format: {result.get('mask_format')}")
         
-        print("\n📦 Loading models...")
+        # Show detections
+        detections = result.get('detections', [])
+        if detections:
+            print(f"\n    Detections ({len(detections)}):")
+            for i, det in enumerate(detections[:5]):  # Show first 5
+                print(f"      [{i+1}] {det['label']}: {det['confidence']:.2f} @ {[int(x) for x in det['box']]}")
+            if len(detections) > 5:
+                print(f"      ... and {len(detections)-5} more")
         
-        if "yolo" in models_to_load:
-            print("  • YOLOv12...")
-            self.yolo = YOLOv12Wrapper()
-            await self.yolo.load()
+        # Show mask info
+        masks = result.get('masks', [])
+        if masks:
+            print(f"\n    Masks ({len(masks)}):")
+            for i, mask in enumerate(masks[:3]):  # Show first 3
+                if isinstance(mask, dict):  # RLE
+                    print(f"      [{i+1}] RLE: size={mask.get('size')}, counts_len={len(mask.get('counts', []))}")
+                else:  # base64
+                    print(f"      [{i+1}] Base64: len={len(mask)} chars")
+            if len(masks) > 3:
+                print(f"      ... and {len(masks)-3} more")
         
-        if "rfdetr" in models_to_load:
-            print("  • RF-DETR...")
-            self.rf_detr = RFDETRWrapper()
-            await self.rf_detr.load()
-        
-        if "florence2" in models_to_load:
-            print("  • Florence-2...")
-            self.florence2 = Florence2Wrapper()
-            await self.florence2.load()
-        
-        if "sam3" in models_to_load:
-            print("  • SAM3...")
-            self.sam3 = SAM3Wrapper()
-            await self.sam3.load()
-        
-        print("✅ Models loaded!\n")
+    except Exception as e:
+        print(f"    ✗ Pipeline failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return
     
-    async def run_detection_pipeline(self, image: Image.Image):
-        """
-        Run the adaptive detection pipeline:
-        1. YOLOv12 for fast screening
-        2. If high density, switch to RF-DETR for precision
-        """
-        print("🔍 Stage 1: Fast Screening with YOLOv12...")
-        start = time.time()
-        yolo_detections = await self.yolo.predict(image)
-        yolo_time = time.time() - start
-        
-        print(f"   Found {len(yolo_detections)} objects in {yolo_time:.2f}s")
-        
-        # Check if scene is complex (high density)
-        if len(yolo_detections) > DENSITY_THRESHOLD:
-            print(f"\n🔬 Stage 2: High-density scene detected! Switching to RF-DETR...")
-            start = time.time()
-            rf_detections = await self.rf_detr.predict(image, threshold=0.5)
-            rf_time = time.time() - start
-            
-            print(f"   Found {len(rf_detections)} objects in {rf_time:.2f}s")
-            return rf_detections, "RF-DETR"
-        else:
-            print("   Scene density is low, using YOLO results.")
-            return yolo_detections, "YOLOv12"
+    # --- Step 4: Run pipeline in QUERY mode ---
+    print("\n" + "-" * 60)
+    print("[4/5] Running pipeline (mode=query, text_query='car')...")
+    print("-" * 60)
     
-    async def run_text_detection(self, image: Image.Image, query: str):
-        """
-        Run text-prompted detection with SAM3.
-        """
-        print(f"\n🔤 Text-prompted detection: '{query}'")
+    try:
+        result_query = await pipeline.analyze(
+            image=image,
+            text_query="car",
+            mode="query",
+            mask_format="png_base64"
+        )
         
-        if self.sam3:
-            print("   Using SAM3 for text-prompted segmentation...")
-            start = time.time()
-            result = await self.sam3.predict(image, text_prompt=query)
-            sam_time = time.time() - start
-            
-            masks = result.get("masks", [])
-            mask_count = len(masks) if hasattr(masks, '__len__') else 0
-            print(f"   Generated {mask_count} masks in {sam_time:.2f}s")
-            return result
-        else:
-            print("   SAM3 not loaded, skipping segmentation.")
-            return {}
+        print("\n📊 QUERY MODE RESULTS:")
+        print(f"    Mode used: {result_query.get('mode_used')}")
+        print(f"    Processing: {result_query.get('meta', {}).get('processing_mode')}")
+        print(f"    Objects detected: {result_query.get('meta', {}).get('objects_detected')}")
+        print(f"    Masks generated: {result_query.get('masks_generated')}")
+        print(f"    Mask format: {result_query.get('mask_format')}")
+        
+        # Show detections
+        detections = result_query.get('detections', [])
+        if detections:
+            print(f"\n    Detections ({len(detections)}):")
+            for i, det in enumerate(detections[:5]):
+                print(f"      [{i+1}] {det['label']}: {det['confidence']:.2f}")
+        
+    except Exception as e:
+        print(f"    ✗ Query mode failed: {e}")
     
-    async def run_segmentation(self, image: Image.Image, detections: list):
-        """
-        Run SAM3 segmentation on detected objects.
-        Uses text prompts based on detected class labels.
-        """
-        if not self.sam3 or not detections:
-            return {}
-        
-        # Get unique labels from detections
-        labels = list(set([d.label for d in detections]))
-        
-        print(f"\n🎭 Stage 3: Segmentation with SAM3...")
-        print(f"   Segmenting objects: {', '.join(labels[:5])}{'...' if len(labels) > 5 else ''}")
-        
-        # Use the most common label for text-prompted segmentation
-        from collections import Counter
-        label_counts = Counter([d.label for d in detections])
-        most_common = label_counts.most_common(1)[0][0]
-        
-        start = time.time()
-        result = await self.sam3.predict(image, text_prompt=most_common)
-        sam_time = time.time() - start
-        
-        masks = result.get("masks", [])
-        mask_count = len(masks) if hasattr(masks, '__len__') else 0
-        print(f"   Generated {mask_count} masks for '{most_common}' in {sam_time:.2f}s")
-        
-        return result
+    # --- Step 5: Run pipeline in SMART QUERY mode ---
+    print("\n" + "-" * 60)
+    print("[5/5] Running pipeline (mode=smart_query)...")
+    print("      User input: 'この画像の中の車や人を見つけて' (Find cars and people)")
+    print("-" * 60)
     
-    async def run_full_pipeline(self, image: Image.Image, text_query: str = None):
-        """
-        Run the complete pipeline:
-        1. Detection (YOLO → RF-DETR if needed)
-        2. Segmentation (SAM3)
+    result_smart = None
+    try:
+        result_smart = await pipeline.analyze(
+            image=image,
+            user_text="この画像の中の車や人を見つけて",  # Natural language input
+            mode="smart_query",
+            mask_format="png_base64"
+        )
         
-        If text_query is provided, use SAM3 for text-prompted segmentation.
-        """
-        print("\n" + "="*60)
-        print("🚀 OMNI-VISION PIPELINE")
-        print("="*60)
+        print("\n📊 SMART QUERY MODE RESULTS:")
+        print(f"    Mode used: {result_smart.get('mode_used')}")
+        print(f"    Processing: {result_smart.get('meta', {}).get('processing_mode')}")
+        print(f"    Objects detected: {result_smart.get('meta', {}).get('objects_detected')}")
+        print(f"    Masks generated: {result_smart.get('masks_generated')}")
+        print(f"    Mask format: {result_smart.get('mask_format')}")
         
-        total_start = time.time()
+        # Show generated queries
+        queries_used = result_smart.get('queries_used', [])
+        if queries_used:
+            print(f"\n    🤖 Gemma3 Generated Queries: {queries_used}")
         
-        if text_query:
-            # Text-prompted mode: Use SAM3 directly
-            result = await self.run_text_detection(image, text_query)
-            detections = []
-            model_used = "SAM3 (text-prompted)"
-        else:
-            # Standard mode: Detection → Segmentation
-            detections, model_used = await self.run_detection_pipeline(image)
-            result = await self.run_segmentation(image, detections)
+        # Show detections
+        detections = result_smart.get('detections', [])
+        if detections:
+            print(f"\n    Detections ({len(detections)}):")
+            for i, det in enumerate(detections[:10]):
+                print(f"      [{i+1}] {det['label']}: {det['confidence']:.2f}")
         
-        total_time = time.time() - total_start
-        
-        # Summary
-        print("\n" + "-"*60)
-        print("📊 PIPELINE SUMMARY")
-        print("-"*60)
-        print(f"   Detection model: {model_used}")
-        print(f"   Objects detected: {len(detections)}")
-        
-        masks = result.get("masks", []) if result else []
-        mask_count = len(masks) if hasattr(masks, '__len__') else 0
-        print(f"   Masks generated: {mask_count}")
-        print(f"   Total time: {total_time:.2f}s")
-        print("="*60 + "\n")
-        
-        return {
-            "detections": detections,
-            "model_used": model_used,
-            "masks": masks,
-            "total_time": total_time
+    except Exception as e:
+        print(f"    ✗ Smart query mode failed: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # --- Summary ---
+    print("\n" + "=" * 60)
+    print("DEMO COMPLETE")
+    print("=" * 60)
+    print(f"\n💡 Key observations:")
+    print(f"   - AUTO mode uses: YOLO → (RF-DETR if dense) → NMS → SAM3")
+    print(f"   - QUERY mode uses: SAM3 text-first → fallback to detectors")
+    print(f"   - SMART QUERY mode uses: Gemma3 → generates queries → SAM3")
+    print(f"   - SAM3 provides pixel-level masks for each detected object")
+    print(f"   - MAX_MASK_BOXES={Config.MAX_MASK_BOXES} limits output count")
+    
+    # Save full results to JSON for inspection
+    output_path = Path(__file__).parent / "demo_output.json"
+    with open(output_path, 'w') as f:
+        # Convert masks to summary for JSON
+        result_summary = {
+            "auto_mode": {
+                **{k: v for k, v in result.items() if k != 'masks'},
+                "masks_summary": [
+                    f"RLE: size={m.get('size')}" if isinstance(m, dict) else f"base64: {len(m)} chars"
+                    for m in result.get('masks', [])[:5]
+                ]
+            },
+            "query_mode": {
+                **{k: v for k, v in result_query.items() if k != 'masks'},
+                "masks_summary": [
+                    f"base64: {len(m)} chars" if isinstance(m, str) else str(type(m))
+                    for m in result_query.get('masks', [])[:5]
+                ]
+            }
         }
+        # Add smart query mode if available
+        if result_smart:
+            result_summary["smart_query_mode"] = {
+                **{k: v for k, v in result_smart.items() if k != 'masks'},
+                "masks_summary": [
+                    f"base64: {len(m)} chars" if isinstance(m, str) else str(type(m))
+                    for m in result_smart.get('masks', [])[:5]
+                ]
+            }
+        json.dump(result_summary, f, indent=2, default=str)
+    print(f"\n📁 Full results saved to: {output_path}")
+    
+    # --- Visualize and save detection results ---
+    visualize_results(demo_image_path, output_path)
 
 
-# ============================================================
-# Main Demo
-# ============================================================
-async def main():
-    print("\n" + "="*60)
-    print("🔮 OMNI-VISION INTEGRATED PIPELINE DEMO")
-    print("="*60)
+def visualize_results(image_path: Path, json_path: Path):
+    """
+    Load demo_output.json and draw detection results on demo_input.jpg.
+    Saves separate images for auto_mode and query_mode.
+    """
+    from PIL import ImageDraw, ImageFont
+    import random
     
-    # System info
-    print(f"\n📌 System Info:")
-    print(f"   PyTorch: {torch.__version__}")
-    print(f"   CUDA: {torch.cuda.is_available()}")
-    if torch.cuda.is_available():
-        print(f"   GPU: {torch.cuda.get_device_name(0)}")
-        print(f"   Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+    print("\n" + "=" * 60)
+    print("VISUALIZING DETECTION RESULTS")
+    print("=" * 60)
     
-    # Download test images
-    print(f"\n📥 Preparing test images...")
-    output_dir = Path("/app/test_images")
-    images = download_sample_images(output_dir)
+    # Load the original image and JSON results
+    with open(json_path, 'r') as f:
+        results = json.load(f)
     
-    # Initialize pipeline
-    demo = OmniVisionDemo()
+    # Color palette for different labels
+    def get_color(label: str, idx: int = 0) -> tuple:
+        """Get a consistent color for each label."""
+        colors = {
+            'car': (0, 255, 0),        # Green
+            'person': (255, 0, 0),      # Red
+            'traffic light': (255, 255, 0),  # Yellow
+            'truck': (0, 0, 255),       # Blue
+            'bus': (255, 165, 0),       # Orange
+            'bicycle': (255, 0, 255),   # Magenta
+            'motorcycle': (0, 255, 255), # Cyan
+        }
+        if label in colors:
+            return colors[label]
+        # Generate a random but consistent color for unknown labels
+        random.seed(hash(label))
+        return (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
     
-    # Load models (skip florence2 due to compatibility issues)
-    await demo.load_models(["yolo", "rfdetr", "sam3"])
+    def draw_detections(image: Image.Image, detections: list, mode_name: str) -> Image.Image:
+        """Draw bounding boxes and labels on the image."""
+        img_copy = image.copy()
+        draw = ImageDraw.Draw(img_copy)
+        
+        # Try to load a font, fallback to default
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+        except:
+            font = ImageFont.load_default()
+        
+        for i, det in enumerate(detections):
+            label = det.get('label', 'unknown')
+            confidence = det.get('confidence', 0)
+            box = det.get('box', [0, 0, 0, 0])
+            
+            x1, y1, x2, y2 = [int(coord) for coord in box]
+            color = get_color(label, i)
+            
+            # Draw bounding box
+            draw.rectangle([x1, y1, x2, y2], outline=color, width=2)
+            
+            # Draw label background
+            text = f"{label}: {confidence:.2f}"
+            bbox = draw.textbbox((x1, y1), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # Draw background rectangle for text
+            draw.rectangle([x1, y1 - text_height - 4, x1 + text_width + 4, y1], fill=color)
+            
+            # Draw text
+            draw.text((x1 + 2, y1 - text_height - 2), text, fill=(255, 255, 255), font=font)
+        
+        return img_copy
     
-    # ============================================================
-    # Demo 1: Standard Detection → Segmentation Pipeline
-    # ============================================================
-    print("\n" + "="*60)
-    print("📸 DEMO 1: Standard Detection Pipeline (Street Scene)")
-    print("="*60)
+    # Process AUTO mode
+    if 'auto_mode' in results:
+        print("\n[AUTO MODE] Drawing detections...")
+        image = Image.open(image_path).convert("RGB")
+        auto_detections = results['auto_mode'].get('detections', [])
+        auto_image = draw_detections(image, auto_detections, "auto")
+        
+        auto_output_path = image_path.parent / "demo_output_auto.jpg"
+        auto_image.save(auto_output_path, quality=95)
+        print(f"    ✓ Saved: {auto_output_path}")
+        print(f"    Objects drawn: {len(auto_detections)}")
     
-    street_image = Image.open(images["street"]).convert("RGB")
-    print(f"   Image size: {street_image.size}")
+    # Process QUERY mode
+    if 'query_mode' in results:
+        print("\n[QUERY MODE] Drawing detections...")
+        image = Image.open(image_path).convert("RGB")
+        query_detections = results['query_mode'].get('detections', [])
+        query_image = draw_detections(image, query_detections, "query")
+        
+        query_output_path = image_path.parent / "demo_output_query.jpg"
+        query_image.save(query_output_path, quality=95)
+        print(f"    ✓ Saved: {query_output_path}")
+        print(f"    Objects drawn: {len(query_detections)}")
     
-    result1 = await demo.run_full_pipeline(street_image)
+    # Process SMART QUERY mode
+    if 'smart_query_mode' in results:
+        print("\n[SMART QUERY MODE] Drawing detections...")
+        image = Image.open(image_path).convert("RGB")
+        smart_detections = results['smart_query_mode'].get('detections', [])
+        smart_image = draw_detections(image, smart_detections, "smart_query")
+        
+        # Add generated queries info to image
+        queries_used = results['smart_query_mode'].get('queries_used', [])
+        if queries_used:
+            from PIL import ImageDraw, ImageFont
+            draw = ImageDraw.Draw(smart_image)
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+            except:
+                font = ImageFont.load_default()
+            query_text = f"Queries: {', '.join(queries_used)}"
+            draw.text((10, 10), query_text, fill=(255, 255, 0), font=font)
+        
+        smart_output_path = image_path.parent / "demo_output_smart_query.jpg"
+        smart_image.save(smart_output_path, quality=95)
+        print(f"    ✓ Saved: {smart_output_path}")
+        print(f"    Objects drawn: {len(smart_detections)}")
+        if queries_used:
+            print(f"    Queries used: {queries_used}")
     
-    # Show top detections
-    if result1["detections"]:
-        print("   Top detections:")
-        for det in result1["detections"][:5]:
-            print(f"      • {det.label}: {det.confidence:.1%}")
-    
-    # ============================================================
-    # Demo 2: Text-prompted Segmentation
-    # ============================================================
-    print("\n" + "="*60)
-    print("📸 DEMO 2: Text-prompted Segmentation")
-    print("="*60)
-    
-    result2 = await demo.run_full_pipeline(street_image, text_query="person")
-    
-    # ============================================================
-    # Demo 3: Compare YOLO vs RF-DETR
-    # ============================================================
-    print("\n" + "="*60)
-    print("📸 DEMO 3: Model Comparison (YOLO vs RF-DETR)")
-    print("="*60)
-    
-    print("\n🔹 YOLOv12:")
-    start = time.time()
-    yolo_results = await demo.yolo.predict(street_image)
-    yolo_time = time.time() - start
-    print(f"   Detections: {len(yolo_results)}, Time: {yolo_time:.2f}s")
-    
-    print("\n🔹 RF-DETR:")
-    start = time.time()
-    rfdetr_results = await demo.rf_detr.predict(street_image, threshold=0.5)
-    rfdetr_time = time.time() - start
-    print(f"   Detections: {len(rfdetr_results)}, Time: {rfdetr_time:.2f}s")
-    
-    # ============================================================
-    # Final Summary
-    # ============================================================
-    print("\n" + "="*60)
-    print("✅ DEMO COMPLETE")
-    print("="*60)
-    print("""
-The Omni-Vision pipeline demonstrated:
-  1. Adaptive detection: YOLO for speed, RF-DETR for precision
-  2. Text-prompted segmentation with SAM3
-  3. Seamless model switching based on scene complexity
-    """)
+    print("\n" + "=" * 60)
+    print("VISUALIZATION COMPLETE")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

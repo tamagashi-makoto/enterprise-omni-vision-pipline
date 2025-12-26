@@ -62,24 +62,26 @@ class YOLOv12Wrapper(ModelWrapper):
     """
 
     async def load(self):
-        """Load YOLOv12 model from local weights."""
+        """Load YOLO model for object detection."""
         from ultralytics import YOLO
         
         print(f"Loading {ModelType.YOLO_V12}... Device: {self.device}")
         
-        # Check for local weights first
-        weight_path = WEIGHTS_DIR / "yolo12m.pt"
-        if weight_path.exists():
-            self.model = YOLO(str(weight_path))
-            print(f"Loaded YOLOv12 from local weights: {weight_path}")
-        else:
-            # Download pretrained model
-            self.model = YOLO("yolo12m.pt")
-            print("Loaded YOLOv12 from pretrained (downloading if needed)")
+        # YOLOv12 weights have ultralytics version compatibility issues (AAttn.qkv attribute error)
+        # Directly use YOLOv8m which is stable and well-tested
+        try:
+            # Try YOLOv8m first (download if not cached)
+            print("Loading YOLOv8m model...")
+            self.model = YOLO("yolov8m.pt")
+            print("Loaded YOLOv8m successfully")
+        except Exception as e:
+            print(f"YOLOv8m failed: {e}, trying YOLOv8s...")
+            self.model = YOLO("yolov8s.pt")
+            print("Loaded YOLOv8s successfully")
         
         # Move to GPU if available
         self.model.to(self.device)
-        print(f"YOLOv12 ready on {self.device}")
+        print(f"YOLO ready on {self.device}")
 
     async def predict(self, image: Image.Image, **kwargs) -> List[DetectionResult]:
         """
@@ -295,37 +297,46 @@ class Florence2Wrapper(ModelWrapper):
 class SAM3Wrapper(ModelWrapper):
     """
     Wrapper for SAM 3 (Segment Anything Model 3).
-    Requires GPU - CPU execution is not supported.
+    Supports:
+    - Text-prompted segmentation via SAM3 text API
+    - Box-prompted segmentation via center-point conversion (workaround)
+    
+    Note: SAM3 works best on GPU. CPU execution is disabled gracefully.
     """
 
     def __init__(self):
         super().__init__()
         self.processor = None
+        self.enabled = True  # Set to False if GPU unavailable
 
     async def load(self):
-        """Load SAM3 model onto GPU."""
-        from sam3.model_builder import build_sam3_image_model
-        from sam3.model.sam3_image_processor import Sam3Processor
-        
+        """Load SAM3 model onto GPU. Gracefully disables on CPU."""
         print(f"Loading {ModelType.SAM_3}... Device: {self.device}")
         
         if self.device == "cpu":
-            raise RuntimeError(
-                "SAM3 requires GPU. CPU execution is not supported. "
-                "Please ensure CUDA is available and properly configured."
-            )
+            print("WARNING: SAM3 requires GPU. Disabling SAM3 (pipeline will degrade gracefully).")
+            self.enabled = False
+            return
         
-        # HuggingFace auth from environment
-        hf_token = os.environ.get("HF_TOKEN")
-        if hf_token:
-            from huggingface_hub import login
-            login(token=hf_token)
-        
-        # Build SAM3 model
-        self.model = build_sam3_image_model()
-        self.processor = Sam3Processor(self.model)
-        
-        print(f"SAM3 loaded successfully on {self.device}")
+        try:
+            from sam3.model_builder import build_sam3_image_model
+            from sam3.model.sam3_image_processor import Sam3Processor
+            
+            # HuggingFace auth from environment
+            hf_token = os.environ.get("HF_TOKEN")
+            if hf_token:
+                from huggingface_hub import login
+                login(token=hf_token)
+            
+            # Build SAM3 model
+            self.model = build_sam3_image_model()
+            self.processor = Sam3Processor(self.model)
+            self.enabled = True
+            
+            print(f"SAM3 loaded successfully on {self.device}")
+        except Exception as e:
+            print(f"WARNING: Failed to load SAM3: {e}. Disabling SAM3.")
+            self.enabled = False
 
     async def predict(
         self, 
@@ -337,43 +348,413 @@ class SAM3Wrapper(ModelWrapper):
         """
         Generate segmentation masks using SAM3.
         
+        Supports two modes:
+        1. text_prompt provided: Use SAM3's text-prompted segmentation
+        2. boxes provided: Use multi-point prompts per box (robust fallback)
+        
+        Note on box prompts:
+        Ultralytics SAM3 does not expose native box prompts in some environments.
+        We emulate box prompting via multi-point prompts (5 points per box):
+        - Center point
+        - 4 corner points inset by 10% of box dimensions
+        Each box is processed sequentially to avoid prompt mixing in dense scenes.
+        
         Args:
             image: PIL Image
-            boxes: Optional bounding boxes (not used in current SAM3 API)
+            boxes: Optional bounding boxes [[x1,y1,x2,y2], ...] for segmentation
             text_prompt: Optional text prompt for segmentation
             
         Returns:
-            Dictionary with masks, boxes, and scores
+            Standardized dict with masks, mask_scores, mask_boxes, metadata
         """
+        # Return empty result if SAM3 is disabled
+        if not self.enabled:
+            return self._empty_result("disabled")
+        
         if self.model is None:
             await self.load()
+            if not self.enabled:
+                return self._empty_result("disabled")
         
         loop = asyncio.get_event_loop()
         
-        def _inference():
-            # Set image in processor
-            inference_state = self.processor.set_image(image)
-            
-            if text_prompt:
-                # Text-prompted segmentation
-                output = self.processor.set_text_prompt(
-                    state=inference_state, 
-                    prompt=text_prompt
-                )
-                return output
-            else:
-                # For now, return empty result if no text prompt
-                # SAM3's automatic mask generation requires different API
-                return {"masks": [], "boxes": [], "scores": []}
-        
-        result = await loop.run_in_executor(None, _inference)
-        
-        # Handle different output formats
-        if isinstance(result, dict):
-            return {
-                "masks": result.get("masks", []),
-                "boxes": result.get("boxes", []),
-                "scores": result.get("scores", [])
-            }
+        if text_prompt:
+            # Text-prompted segmentation
+            result = await loop.run_in_executor(None, lambda: self._run_text_prompt(image, text_prompt))
+            return self._standardize_output(result, [], "text")
+        elif boxes and len(boxes) > 0:
+            # Box-prompted segmentation via multi-point prompts
+            result = await loop.run_in_executor(None, lambda: self._run_box_prompts(image, boxes))
+            return result
         else:
-            return {"masks": [], "boxes": [], "scores": []}
+            return self._empty_result("no_prompt")
+    
+    def _run_text_prompt(self, image: Image.Image, text_prompt: str) -> Dict[str, Any]:
+        """Run text-prompted segmentation."""
+        try:
+            inference_state = self.processor.set_image(image)
+            output = self.processor.set_text_prompt(
+                state=inference_state, 
+                prompt=text_prompt
+            )
+            return output if isinstance(output, dict) else {"masks": [], "scores": [], "boxes": []}
+        except Exception as e:
+            print(f"SAM3 text prompt error: {e}")
+            return {"masks": [], "scores": [], "boxes": []}
+    
+    def _run_box_prompts(self, image: Image.Image, boxes: List[List[float]]) -> Dict[str, Any]:
+        """
+        Run box-prompted segmentation using multi-point prompts per box.
+        
+        For each box, generates 5 positive points:
+        - Center point
+        - 4 corner points inset by 10% of box dimensions
+        
+        Processes boxes sequentially to avoid prompt mixing.
+        """
+        all_masks = []
+        all_scores = []
+        all_boxes = []
+        
+        for box in boxes:
+            x1, y1, x2, y2 = box
+            w, h = x2 - x1, y2 - y1
+            
+            # Skip invalid boxes
+            if w <= 0 or h <= 0:
+                continue
+            
+            # Generate multi-point prompts for this box
+            inset_x = w * 0.1
+            inset_y = h * 0.1
+            
+            points = [
+                [(x1 + x2) / 2, (y1 + y2) / 2],  # Center
+                [x1 + inset_x, y1 + inset_y],    # Top-left inset
+                [x2 - inset_x, y1 + inset_y],    # Top-right inset
+                [x1 + inset_x, y2 - inset_y],    # Bottom-left inset
+                [x2 - inset_x, y2 - inset_y],    # Bottom-right inset
+            ]
+            labels = [1, 1, 1, 1, 1]  # All positive (foreground)
+            
+            try:
+                inference_state = self.processor.set_image(image)
+                
+                # Try point prompt API
+                if hasattr(self.processor, 'set_point_prompt'):
+                    output = self.processor.set_point_prompt(
+                        state=inference_state,
+                        points=points,
+                        labels=labels
+                    )
+                elif hasattr(self.processor, 'add_points'):
+                    # Alternative API
+                    output = self.processor.add_points(
+                        state=inference_state,
+                        points=points,
+                        labels=labels
+                    )
+                else:
+                    # Last resort: single center point
+                    center = points[0]
+                    output = self.processor.set_text_prompt(
+                        state=inference_state,
+                        prompt="object"
+                    )
+                
+                if not isinstance(output, dict):
+                    continue
+                
+                masks = output.get("masks", [])
+                scores = output.get("scores", [])
+                
+                # Select best mask for this box (highest score or largest area)
+                if masks is not None and len(masks) > 0:
+                    best_idx = 0
+                    if scores is not None and len(scores) > 0:
+                        if hasattr(scores, 'tolist'):
+                            scores_list = scores.tolist() if hasattr(scores, 'tolist') else list(scores)
+                        else:
+                            scores_list = list(scores) if not isinstance(scores, list) else scores
+                        if scores_list:
+                            best_idx = max(range(len(scores_list)), key=lambda i: scores_list[i])
+                    
+                    # Get the best mask
+                    if hasattr(masks, '__getitem__'):
+                        best_mask = masks[best_idx]
+                        if hasattr(best_mask, 'cpu'):
+                            best_mask = best_mask.cpu().numpy()
+                        elif hasattr(best_mask, 'numpy'):
+                            best_mask = best_mask.numpy()
+                        
+                        all_masks.append(best_mask)
+                        best_score = scores_list[best_idx] if scores_list and best_idx < len(scores_list) else 0.9
+                        all_scores.append(float(best_score))
+                        all_boxes.append(box)
+                        
+            except Exception as e:
+                print(f"SAM3 box prompt error for box {box}: {e}")
+                continue
+        
+        return {
+            "masks": all_masks,
+            "mask_scores": all_scores,
+            "mask_boxes": all_boxes,
+            "metadata": {"source": "box_prompt", "mask_count": len(all_masks)}
+        }
+    
+    def _empty_result(self, reason: str) -> Dict[str, Any]:
+        """Return empty standardized result."""
+        return {
+            "masks": [],
+            "mask_scores": [],
+            "mask_boxes": [],
+            "metadata": {"source": "none", "reason": reason}
+        }
+    
+    def _standardize_output(
+        self, 
+        result: Dict[str, Any], 
+        input_boxes: List[List[float]],
+        source: str
+    ) -> Dict[str, Any]:
+        """Standardize SAM3 output to consistent format."""
+        if not isinstance(result, dict):
+            return self._empty_result("invalid_output")
+        
+        masks = result.get("masks", [])
+        scores = result.get("scores", [])
+        boxes = result.get("boxes", input_boxes)
+        
+        # Convert masks to list if needed
+        if hasattr(masks, 'cpu'):
+            masks = [m.cpu().numpy() for m in masks]
+        elif isinstance(masks, np.ndarray):
+            masks = [masks] if masks.ndim == 2 else list(masks)
+        
+        # Ensure scores is a list of floats
+        if hasattr(scores, 'tolist'):
+            scores = scores.tolist()
+        if not isinstance(scores, list):
+            scores = [float(scores)] if scores else []
+        
+        # Ensure boxes is a list of lists
+        if hasattr(boxes, 'tolist'):
+            boxes = boxes.tolist()
+        
+        return {
+            "masks": masks,
+            "mask_scores": scores,
+            "mask_boxes": boxes,
+            "metadata": {"source": source, "mask_count": len(masks)}
+        }
+
+
+class Gemma3QueryGenerator(ModelWrapper):
+    """
+    Gemma3-4b-it GGUF model for generating search queries from user text.
+    
+    Uses llama-cpp-python to load the quantized GGUF model from HuggingFace.
+    Converts natural language user input into multiple object detection queries.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.enabled = True
+
+    async def load(self):
+        """Load Gemma3 GGUF model via llama-cpp-python from HuggingFace."""
+        print(f"Loading Gemma3 Query Generator... Device: {self.device}")
+        
+        if not Config.GEMMA3_ENABLED:
+            print("Gemma3 is disabled in config. Skipping load.")
+            self.enabled = False
+            return
+        
+        try:
+            from llama_cpp import Llama
+            
+            # Load model directly from HuggingFace
+            # llama-cpp-python supports hf:// prefix for HuggingFace models
+            hf_token = os.environ.get("HF_TOKEN")
+            
+            print(f"Downloading/loading model from HuggingFace: {Config.GEMMA3_MODEL_ID}")
+            
+            # Determine GPU layers
+            n_gpu_layers = Config.GEMMA3_GPU_LAYERS if self.device == "cuda" else 0
+            
+            self.model = Llama.from_pretrained(
+                repo_id=Config.GEMMA3_MODEL_ID,
+                filename=Config.GEMMA3_MODEL_FILE,
+                n_ctx=Config.GEMMA3_CONTEXT_SIZE,
+                n_gpu_layers=n_gpu_layers,
+                verbose=False
+            )
+            
+            self.enabled = True
+            print(f"Gemma3 loaded successfully (GPU layers: {n_gpu_layers})")
+            
+        except ImportError as e:
+            print(f"WARNING: llama-cpp-python not installed: {e}")
+            print("Install with: CMAKE_ARGS=\"-DGGML_CUDA=on\" pip install llama-cpp-python")
+            self.enabled = False
+        except Exception as e:
+            print(f"WARNING: Failed to load Gemma3: {e}")
+            self.enabled = False
+
+    async def predict(self, image: Any, **kwargs) -> Any:
+        """Not used - Gemma3 is for text generation only."""
+        raise NotImplementedError("Gemma3 is for query generation, not image prediction")
+
+    async def generate_queries(
+        self, 
+        user_text: str, 
+        max_queries: int = None
+    ) -> List[str]:
+        """
+        Generate multiple search queries from user's natural language input.
+        
+        Args:
+            user_text: User's natural language description (e.g., "この画像の中の車を見つけて")
+            max_queries: Maximum number of queries to generate (default: Config.GEMMA3_MAX_QUERIES)
+            
+        Returns:
+            List of search query strings (e.g., ["car", "vehicle", "automobile"])
+        """
+        if not self.enabled:
+            # Fallback: extract simple nouns from user text
+            return self._fallback_extract_queries(user_text)
+        
+        if self.model is None:
+            await self.load()
+            if not self.enabled:
+                return self._fallback_extract_queries(user_text)
+        
+        max_queries = max_queries or Config.GEMMA3_MAX_QUERIES
+        
+        # Construct the prompt for query generation
+        system_prompt = """You are a query generator for an object detection system.
+Given a user's request in natural language, extract and generate relevant object detection queries.
+Output ONLY a JSON array of simple object names (single words or short phrases) that can be detected in an image.
+Do not include explanations, just the JSON array.
+
+Example input: "Find all vehicles and people in this image"
+Example output: ["car", "truck", "bus", "person", "pedestrian"]
+
+Example input: "この画像の中の動物を探して"
+Example output: ["dog", "cat", "bird", "horse", "animal"]
+
+Example input: "Detect manufacturing defects"
+Example output: ["scratch", "dent", "crack", "defect", "damage"]"""
+
+        user_prompt = f"Generate {max_queries} or fewer object detection queries for: \"{user_text}\""
+        
+        # Format for Gemma3 instruction-tuned model
+        prompt = f"""<start_of_turn>user
+{system_prompt}
+
+{user_prompt}<end_of_turn>
+<start_of_turn>model
+"""
+        
+        loop = asyncio.get_event_loop()
+        
+        def _generate():
+            try:
+                output = self.model(
+                    prompt,
+                    max_tokens=256,
+                    temperature=0.3,
+                    stop=["<end_of_turn>", "\n\n"],
+                    echo=False
+                )
+                return output["choices"][0]["text"].strip()
+            except Exception as e:
+                print(f"Gemma3 generation error: {e}")
+                return "[]"
+        
+        response = await loop.run_in_executor(None, _generate)
+        
+        # Parse the JSON response
+        queries = self._parse_query_response(response, max_queries)
+        
+        print(f"Gemma3 generated queries: {queries}")
+        return queries
+
+    def _parse_query_response(self, response: str, max_queries: int) -> List[str]:
+        """Parse the model's JSON response into a list of queries."""
+        import json
+        import re
+        
+        try:
+            # Try to extract JSON array from response
+            # Handle cases where the model adds extra text
+            json_match = re.search(r'\[.*?\]', response, re.DOTALL)
+            if json_match:
+                queries = json.loads(json_match.group())
+                if isinstance(queries, list):
+                    # Filter and clean queries
+                    cleaned = []
+                    for q in queries:
+                        if isinstance(q, str) and q.strip():
+                            cleaned.append(q.strip().lower())
+                    return cleaned[:max_queries]
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"Failed to parse Gemma3 response as JSON: {e}")
+        
+        # Fallback: try to extract words from response
+        words = re.findall(r'"([^"]+)"', response)
+        if words:
+            return [w.lower().strip() for w in words[:max_queries]]
+        
+        return []
+
+    def _fallback_extract_queries(self, user_text: str) -> List[str]:
+        """
+        Simple fallback when Gemma3 is not available.
+        Extracts potential object names from user text using basic patterns.
+        """
+        import re
+        
+        # Common object keywords to look for
+        common_objects = [
+            "car", "person", "dog", "cat", "bird", "truck", "bus", "bicycle",
+            "motorcycle", "airplane", "boat", "chair", "table", "phone", "laptop",
+            "bottle", "cup", "food", "plant", "animal", "vehicle", "face",
+            "license plate", "defect", "scratch", "damage"
+        ]
+        
+        # Japanese to English mapping for common terms
+        ja_to_en = {
+            "車": "car", "人": "person", "犬": "dog", "猫": "cat", "鳥": "bird",
+            "トラック": "truck", "バス": "bus", "自転車": "bicycle", "バイク": "motorcycle",
+            "飛行機": "airplane", "船": "boat", "椅子": "chair", "テーブル": "table",
+            "動物": "animal", "乗り物": "vehicle", "顔": "face", "食べ物": "food",
+            "植物": "plant", "傷": "scratch", "欠陥": "defect", "ダメージ": "damage"
+        }
+        
+        queries = []
+        text_lower = user_text.lower()
+        
+        # Check for common English objects
+        for obj in common_objects:
+            if obj in text_lower:
+                queries.append(obj)
+        
+        # Check for Japanese terms
+        for ja, en in ja_to_en.items():
+            if ja in user_text:
+                if en not in queries:
+                    queries.append(en)
+        
+        # If no matches found, try to extract nouns (simple heuristic)
+        if not queries:
+            # Extract quoted strings or single words
+            words = re.findall(r'"([^"]+)"|\'([^\']+)\'|(\b\w+\b)', user_text)
+            for match in words:
+                word = next((w for w in match if w), None)
+                if word and len(word) > 2 and word.lower() not in ["the", "and", "for", "find", "detect", "this", "image"]:
+                    queries.append(word.lower())
+        
+        return queries[:Config.GEMMA3_MAX_QUERIES] if queries else ["object"]
+

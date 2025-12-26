@@ -29,14 +29,9 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Model weights (large files)
+# Model weights (large files - download separately)
 *.pt
 *.pth
 *.onnx
 *.bin
-
-# Test outputs
-*.jpg
-*.png
-!test_*.jpg
-!test_*.png
+*.safetensors

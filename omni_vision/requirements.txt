@@ -32,6 +32,10 @@ supervision
 decord
 pycocotools
 
+# Gemma3 (llama-cpp-python for GGUF inference)
+# For GPU support: CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
+llama-cpp-python>=0.3.0
+
 # Testing
 pytest
 pytest-asyncio

@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     build-essential \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Python 3.12 as default
@@ -47,6 +48,10 @@ RUN git clone https://github.com/facebookresearch/sam3.git /opt/sam3 \
 # Copy and install requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install llama-cpp-python with CUDA support for Gemma3
+ENV CMAKE_ARGS="-DGGML_CUDA=on"
+RUN pip install --no-cache-dir llama-cpp-python>=0.3.0
 
 # =========================================
 # Runtime Stage
